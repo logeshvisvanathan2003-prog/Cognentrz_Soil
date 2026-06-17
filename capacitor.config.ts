@@ -5,21 +5,18 @@ const config: CapacitorConfig = {
   appName: 'Cognentrz',
   webDir: 'out',
   server: {
-    // Production Vercel URL - no auth, no redirects
-    url: 'https://cognentrz-logz-mt52yf69k-logeshvisvanathan2003-progs-projects.vercel.app',
+    url: 'https://cognentrz-logz-iu0bz9rv9-logeshvisvanathan2003-progs-projects.vercel.app',
     cleartext: false,
     androidScheme: 'https',
   },
   android: {
     backgroundColor: '#0a0f0a',
-    allowMixedContent: false,
   },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2500,
       backgroundColor: '#0a0f0a',
       showSpinner: false,
-      launchAutoHide: true,
     },
     StatusBar: {
       style: 'Dark',
