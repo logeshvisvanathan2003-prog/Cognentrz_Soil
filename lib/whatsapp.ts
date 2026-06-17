@@ -1,7 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Cognentrz WhatsApp sender
-// Sends a professional PDF report as a WhatsApp document via Twilio.
-// Falls back to a rich text message when no public URL is available (local dev).
+// Cognentrz WhatsApp — sends professional PDF report to every user
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface WhatsAppReportPayload {
@@ -10,11 +8,22 @@ export interface WhatsAppReportPayload {
   userName: string;
   soilHealthScore: number;
   trend: string;
-  analysisId: string;     // used to build the public PDF URL
+  analysisId: string;
   lang?: string;
 }
 
-// ── Build the accompanying text caption ──────────────────────────────────────
+// ── Get public app base URL ────────────────────────────────────────────────
+function getAppUrl(): string {
+  // Try multiple env vars — Vercel sets VERCEL_URL automatically
+  const url =
+    process.env.NEXTAUTH_URL ||
+    process.env.APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
+    '';
+  return url.replace(/\/$/, '');
+}
+
+// ── Format caption text ────────────────────────────────────────────────────
 function buildCaption(p: WhatsAppReportPayload): string {
   const score = p.soilHealthScore;
   const emoji = score >= 70 ? '✅' : score >= 50 ? '⚠️' : '🚨';
@@ -23,73 +32,49 @@ function buildCaption(p: WhatsAppReportPayload): string {
   return [
     `🌾 *COGNENTRZ SOIL REPORT*`,
     `━━━━━━━━━━━━━━━━━`,
-    `Hi *${p.userName}*! Your soil analysis for *${p.farmName}* is ready.`,
-    ``,
-    `${emoji} *Soil Health: ${score}/100* — _${label}_`,
-    `${score >= 70 ? '📈' : score >= 50 ? '➡️' : '📉'} Trend: ${p.trend}`,
-    ``,
-    `📄 Your full professional PDF report is attached above.`,
-    `It includes satellite readings, nutrient data, and AI recommendations.`,
-    ``,
-    `_Powered by Cognentrz · Google Earth Engine_`,
-    `_Reply STOP to disable alerts_`,
-  ].join('\n');
-}
-
-// ── Build rich text fallback (when PDF URL not available in local dev) ────────
-function buildTextFallback(p: WhatsAppReportPayload): string {
-  const score = p.soilHealthScore;
-  const emoji = score >= 70 ? '✅' : score >= 50 ? '⚠️' : '🚨';
-  const label = score >= 70 ? 'Healthy' : score >= 50 ? 'Fair' : 'Needs Attention';
-
-  return [
-    `🌾 *COGNENTRZ SOIL ANALYSIS*`,
-    `━━━━━━━━━━━━━━━━━`,
-    `Hi *${p.userName}*, analysis complete for *${p.farmName}*!`,
+    `Hi *${p.userName}*! Analysis for *${p.farmName}* is ready.`,
     ``,
     `${emoji} *Soil Health: ${score}/100* — _${label}_`,
     `${score >= 70 ? '📈' : '➡️'} Trend: ${p.trend}`,
     ``,
-    `_PDF report available in the Cognentrz app._`,
-    `_Powered by Google Earth Engine_`,
-    `_Reply STOP to disable_`,
+    `📄 Your full PDF report is attached.`,
+    `It includes satellite data, nutrients & AI recommendations.`,
+    ``,
+    `_Powered by Cognentrz · Google Earth Engine_`,
   ].join('\n');
 }
 
-// ── Get public app URL (for PDF link) ────────────────────────────────────────
-function getAppUrl(): string | null {
-  const url =
-    process.env.NEXTAUTH_URL ||
-    process.env.VERCEL_URL   ||
-    process.env.APP_URL      ||
-    '';
-  if (!url) return null;
-  const base = url.startsWith('http') ? url : `https://${url}`;
-  return base.replace(/\/$/, '');
+// ── Normalize phone number ─────────────────────────────────────────────────
+function normalizePhone(raw: string): string {
+  let phone = raw.trim().replace(/[^\d+]/g, '');
+  if (!phone.startsWith('+')) {
+    if (phone.length === 10) phone = `+91${phone}`;
+    else if (phone.length === 12 && phone.startsWith('91')) phone = `+${phone}`;
+    else phone = `+${phone}`;
+  }
+  return phone;
 }
 
-// ── Main send function ────────────────────────────────────────────────────────
+// ── Main send function ─────────────────────────────────────────────────────
 export async function sendWhatsAppReport(
   payload: WhatsAppReportPayload
 ): Promise<{ ok: boolean; provider?: string; error?: string }> {
-  let phone = (payload.toPhone || '').trim().replace(/[^\d+]/g, '');
-  if (!phone) return { ok: false, error: 'no phone number' };
-  if (!phone.startsWith('+')) phone = '+' + phone;
+
+  if (!payload.toPhone) return { ok: false, error: 'no phone number' };
+  const phone = normalizePhone(payload.toPhone);
 
   const sid    = (process.env.TWILIO_ACCOUNT_SID   || '').trim();
   const token  = (process.env.TWILIO_AUTH_TOKEN     || '').trim();
   const from   = (process.env.TWILIO_WHATSAPP_FROM  || '').trim();
   const cmbKey = (process.env.CALLMEBOT_APIKEY      || '').trim();
 
-  const appUrl  = getAppUrl();
-  const pdfUrl  = appUrl
-    ? `${appUrl}/api/reports/pdf/${payload.analysisId}`
-    : null;
+  const appUrl = getAppUrl();
+  const pdfUrl = appUrl ? `${appUrl}/api/reports/pdf/${payload.analysisId}` : null;
 
-  console.log('[whatsapp] providers =', { twilio: !!(sid && token && from), callmebot: !!cmbKey, pdfUrl, to: phone });
+  console.log('[whatsapp] sending to:', phone, '| pdf:', pdfUrl || 'none');
 
   try {
-    // ── Twilio (sends PDF as document) ───────────────────────────────────────
+    // ── Twilio ──────────────────────────────────────────────────────────────
     if (sid && token && from) {
       const fromAddr = from.startsWith('whatsapp:') ? from : `whatsapp:${from}`;
       const caption  = buildCaption(payload);
@@ -100,10 +85,8 @@ export async function sendWhatsAppReport(
         Body: caption,
       };
 
-      // Attach PDF if we have a public URL
-      if (pdfUrl) {
-        bodyParams['MediaUrl0'] = pdfUrl;
-      }
+      // Attach PDF if public URL is available
+      if (pdfUrl) bodyParams['MediaUrl0'] = pdfUrl;
 
       const res = await fetch(
         `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
@@ -120,43 +103,43 @@ export async function sendWhatsAppReport(
       const data = await res.json();
       if (!res.ok) {
         console.error('[whatsapp] Twilio error:', data);
-        return { ok: false, error: data.message || 'Twilio error' };
+        return { ok: false, error: data.message || 'Twilio send failed' };
       }
 
-      console.log('[whatsapp] ✅ Sent via Twilio, SID:', data.sid, pdfUrl ? '(with PDF)' : '(text only)');
+      console.log('[whatsapp] ✅ Sent via Twilio', pdfUrl ? '(with PDF)' : '(text only)', '→', phone);
       return { ok: true, provider: pdfUrl ? 'twilio-pdf' : 'twilio-text' };
     }
 
-    // ── CallMeBot fallback (text only — no media support) ────────────────────
+    // ── CallMeBot (text only fallback) ───────────────────────────────────────
     if (cmbKey) {
-      const message = buildTextFallback(payload);
+      const message = buildCaption(payload);
       const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(message)}&apikey=${cmbKey}`;
       const r   = await fetch(url);
       const txt = await r.text();
-      if (r.ok && /queued|sent|Message to/i.test(txt)) return { ok: true, provider: 'callmebot' };
+      if (r.ok && /queued|sent|Message/i.test(txt)) return { ok: true, provider: 'callmebot' };
       return { ok: false, error: txt.slice(0, 120) };
     }
 
-    console.warn('[whatsapp] No provider configured → demo mode');
+    console.warn('[whatsapp] No provider configured');
     return { ok: false, error: 'no provider configured' };
+
   } catch (e: any) {
     return { ok: false, error: e.message };
   }
 }
 
-// ── Legacy plain text sender (kept for compatibility) ────────────────────────
+// ── Legacy plain text sender (backward compat) ─────────────────────────────
 export async function sendWhatsApp(
   toRaw: string,
   message: string
 ): Promise<{ ok: boolean; provider?: string; error?: string }> {
-  let phone = (toRaw || '').trim().replace(/[^\d+]/g, '');
-  if (!phone) return { ok: false, error: 'no number' };
-  if (!phone.startsWith('+')) phone = '+' + phone;
+  if (!toRaw) return { ok: false, error: 'no number' };
+  const phone = normalizePhone(toRaw);
 
-  const sid    = (process.env.TWILIO_ACCOUNT_SID  || '').trim();
-  const token  = (process.env.TWILIO_AUTH_TOKEN    || '').trim();
-  const from   = (process.env.TWILIO_WHATSAPP_FROM || '').trim();
-  const cmbKey = (process.env.CALLMEBOT_APIKEY     || '').trim();
+  const sid    = (process.env.TWILIO_ACCOUNT_SID   || '').trim();
+  const token  = (process.env.TWILIO_AUTH_TOKEN     || '').trim();
+  const from   = (process.env.TWILIO_WHATSAPP_FROM  || '').trim();
+  const cmbKey = (process.env.CALLMEBOT_APIKEY      || '').trim();
 
   try {
     if (sid && token && from) {
@@ -170,21 +153,20 @@ export async function sendWhatsApp(
         body: new URLSearchParams({ To: `whatsapp:${phone}`, From: fromAddr, Body: message }).toString(),
       });
       const data = await res.json();
-      if (!res.ok) return { ok: false, error: data.message || 'Twilio error' };
+      if (!res.ok) return { ok: false, error: data.message };
       return { ok: true, provider: 'twilio' };
     }
     if (cmbKey) {
       const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(message)}&apikey=${cmbKey}`;
       const r   = await fetch(url);
       const txt = await r.text();
-      if (r.ok && /queued|sent|Message to/i.test(txt)) return { ok: true, provider: 'callmebot' };
+      if (r.ok && /queued|sent|Message/i.test(txt)) return { ok: true, provider: 'callmebot' };
       return { ok: false, error: txt.slice(0, 120) };
     }
-    return { ok: false, error: 'no provider configured' };
+    return { ok: false, error: 'no provider' };
   } catch (e: any) { return { ok: false, error: e.message }; }
 }
 
-// ── Translate helper ─────────────────────────────────────────────────────────
 export async function translateText(text: string, target: string): Promise<string> {
   if (!target || target === 'en') return text;
   try {
@@ -195,14 +177,9 @@ export async function translateText(text: string, target: string): Promise<strin
   } catch { return text; }
 }
 
-// Keep buildRichReport for legacy use
 export function buildRichReport(data: any): string {
-  return buildTextFallback({
-    toPhone:         '',
-    farmName:        data.farmName,
-    userName:        'Farmer',
-    soilHealthScore: data.soilHealthScore,
-    trend:           data.trend,
-    analysisId:      '',
+  return buildCaption({
+    toPhone: '', farmName: data.farmName, userName: 'Farmer',
+    soilHealthScore: data.soilHealthScore, trend: data.trend, analysisId: '',
   });
 }

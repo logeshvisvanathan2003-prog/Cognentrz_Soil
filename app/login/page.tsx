@@ -115,7 +115,7 @@ export default function LoginPage() {
                 <GlassInput icon={Mail} type="email" placeholder="Email" value={form.email}
                   onChange={(v) => setForm({ ...form, email: v })} />
                 {isRegister && (
-                  <GlassInput icon={Phone} type="tel" placeholder="Phone (+91…)" value={form.phone}
+                  <GlassInput icon={Phone} type="tel" placeholder="10-digit mobile number" value={form.phone}
                     onChange={(v) => setForm({ ...form, phone: v })} />
                 )}
                 <div className="relative">

@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { hashPassword, generateToken } from '@/lib/auth';
 
+// Normalize Indian phone numbers:
+// 9876543210    → +919876543210
+// 919876543210  → +919876543210
+// +919876543210 → +919876543210
+function normalizePhone(raw: string | undefined | null): string | null {
+  if (!raw) return null;
+  const digits = raw.replace(/\D/g, ''); // strip non-digits
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length === 12 && digits.startsWith('91')) return `+${digits}`;
+  if (digits.length === 11 && digits.startsWith('0')) return `+91${digits.slice(1)}`;
+  if (raw.startsWith('+')) return raw.trim();
+  return `+${digits}`;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { name, email, password, phone, location } = await req.json();
@@ -21,11 +35,14 @@ export async function POST(req: NextRequest) {
     }
 
     const passwordHash = await hashPassword(password);
+    const normalizedPhone = normalizePhone(phone);
+
+    console.log(`[register] ${email} phone: ${phone} → ${normalizedPhone}`);
 
     const result = await query(
-      `INSERT INTO users (name, email, password_hash, phone, location, whatsapp_number, whatsapp_enabled) 
+      `INSERT INTO users (name, email, password_hash, phone, location, whatsapp_number, whatsapp_enabled)
        VALUES ($1, $2, $3, $4, $5, $6, true) RETURNING id, name, email, created_at`,
-      [name, email, passwordHash, phone || null, location || null, phone || null]
+      [name, email, passwordHash, normalizedPhone, location || null, normalizedPhone]
     );
 
     const user = result.rows[0];
