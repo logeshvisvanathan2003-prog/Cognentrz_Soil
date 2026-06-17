@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Cognentrz',
   webDir: 'out',
   server: {
-    url: 'https://cognentrz-logz-iu0bz9rv9-logeshvisvanathan2003-progs-projects.vercel.app',
+    url: 'https://cognentrz-logz-dpuabzrpn-logeshvisvanathan2003-progs-projects.vercel.app',
     cleartext: false,
     androidScheme: 'https',
   },
