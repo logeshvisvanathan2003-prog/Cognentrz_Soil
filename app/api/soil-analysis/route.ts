@@ -7,6 +7,7 @@ import { getSoilGridsData } from '@/lib/soilgrids';
 import { calculateSoilHealthScores, generatePredictions } from '@/lib/soil-scoring';
 import { generateAIRecommendations } from '@/lib/ai-recommendations';
 import { sendWhatsAppReport } from '@/lib/whatsapp';
+import { sendSMSReport } from '@/lib/sms';
 
 export async function POST(req: NextRequest) {
   const user = authenticateRequest(req);
@@ -235,6 +236,17 @@ export async function POST(req: NextRequest) {
         whatsappSent  = result.ok;
         whatsappError = result.ok ? null : result.error || 'send failed';
         console.log('[analysis→whatsapp]', result);
+
+        // Also send SMS — works for ALL users, no activation needed
+        sendSMSReport({
+          toPhone:         number,
+          farmName:        farm.name,
+          userName:        row.name || 'Farmer',
+          soilHealthScore: scores.soilHealthScore,
+          trend:           trendLabel,
+          analysisId,
+        }).then(r => console.log('[analysis→sms]', r))
+          .catch(e => console.warn('[analysis→sms] failed:', e));
       } else {
         whatsappError = number ? 'alerts disabled by user' : 'no phone on account';
       }

@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Cognentrz WhatsApp — sends professional PDF report to every user
+// Cognentrz WhatsApp — professional PDF report sender
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface WhatsAppReportPayload {
@@ -12,56 +12,58 @@ export interface WhatsAppReportPayload {
   lang?: string;
 }
 
-// ── Get public app base URL ────────────────────────────────────────────────
+// ── Get stable production URL for PDF link ────────────────────────────────
 function getAppUrl(): string {
-  // Try multiple env vars — Vercel sets VERCEL_URL automatically
-  const url =
-    process.env.NEXTAUTH_URL ||
-    process.env.APP_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
-    '';
-  return url.replace(/\/$/, '');
+  return (
+    process.env.NEXTAUTH_URL                                          ||
+    process.env.APP_URL                                               ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '')  ||
+    (process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}` : '')                     ||
+    ''
+  ).replace(/\/$/, '');
 }
 
-// ── Format caption text ────────────────────────────────────────────────────
-function buildCaption(p: WhatsAppReportPayload): string {
-  const score = p.soilHealthScore;
-  const emoji = score >= 70 ? '✅' : score >= 50 ? '⚠️' : '🚨';
-  const label = score >= 70 ? 'Healthy' : score >= 50 ? 'Fair' : 'Needs Attention';
+// ── Normalize Indian phone → E.164 ───────────────────────────────────────
+export function normalizePhone(raw: string): string {
+  let p = (raw || '').trim().replace(/[^\d+]/g, '');
+  if (!p) return '';
+  if (p.startsWith('+')) return p;
+  if (p.length === 10) return `+91${p}`;
+  if (p.length === 12 && p.startsWith('91')) return `+${p}`;
+  if (p.length === 11 && p.startsWith('0')) return `+91${p.slice(1)}`;
+  return `+${p}`;
+}
 
+// ── Build WhatsApp caption ────────────────────────────────────────────────
+function buildCaption(p: WhatsAppReportPayload): string {
+  const s = p.soilHealthScore;
+  const emoji = s >= 70 ? '✅' : s >= 50 ? '⚠️' : '🚨';
+  const label = s >= 70 ? 'Healthy' : s >= 50 ? 'Fair' : 'Needs Attention';
   return [
     `🌾 *COGNENTRZ SOIL REPORT*`,
     `━━━━━━━━━━━━━━━━━`,
     `Hi *${p.userName}*! Analysis for *${p.farmName}* is ready.`,
     ``,
-    `${emoji} *Soil Health: ${score}/100* — _${label}_`,
-    `${score >= 70 ? '📈' : '➡️'} Trend: ${p.trend}`,
+    `${emoji} *Soil Health: ${s}/100* — _${label}_`,
+    `${s >= 70 ? '📈' : s >= 50 ? '➡️' : '📉'} Trend: ${p.trend}`,
     ``,
-    `📄 Your full PDF report is attached.`,
-    `It includes satellite data, nutrients & AI recommendations.`,
+    `📄 Your full professional PDF report is attached.`,
+    `Includes satellite data, nutrients & AI recommendations.`,
     ``,
     `_Powered by Cognentrz · Google Earth Engine_`,
   ].join('\n');
 }
 
-// ── Normalize phone number ─────────────────────────────────────────────────
-function normalizePhone(raw: string): string {
-  let phone = raw.trim().replace(/[^\d+]/g, '');
-  if (!phone.startsWith('+')) {
-    if (phone.length === 10) phone = `+91${phone}`;
-    else if (phone.length === 12 && phone.startsWith('91')) phone = `+${phone}`;
-    else phone = `+${phone}`;
-  }
-  return phone;
-}
-
-// ── Main send function ─────────────────────────────────────────────────────
+// ── Send report via Twilio or CallMeBot ──────────────────────────────────
 export async function sendWhatsAppReport(
   payload: WhatsAppReportPayload
 ): Promise<{ ok: boolean; provider?: string; error?: string }> {
 
   if (!payload.toPhone) return { ok: false, error: 'no phone number' };
-  const phone = normalizePhone(payload.toPhone);
+  const phone  = normalizePhone(payload.toPhone);
+  if (!phone)  return { ok: false, error: 'invalid phone number' };
 
   const sid    = (process.env.TWILIO_ACCOUNT_SID   || '').trim();
   const token  = (process.env.TWILIO_AUTH_TOKEN     || '').trim();
@@ -71,22 +73,18 @@ export async function sendWhatsAppReport(
   const appUrl = getAppUrl();
   const pdfUrl = appUrl ? `${appUrl}/api/reports/pdf/${payload.analysisId}` : null;
 
-  console.log('[whatsapp] sending to:', phone, '| pdf:', pdfUrl || 'none');
+  console.log('[whatsapp] to:', phone, '| appUrl:', appUrl, '| pdfUrl:', pdfUrl);
 
   try {
-    // ── Twilio ──────────────────────────────────────────────────────────────
+    // ── Twilio ──────────────────────────────────────────────────────────
     if (sid && token && from) {
       const fromAddr = from.startsWith('whatsapp:') ? from : `whatsapp:${from}`;
-      const caption  = buildCaption(payload);
-
-      const bodyParams: Record<string, string> = {
+      const params: Record<string, string> = {
         To:   `whatsapp:${phone}`,
         From: fromAddr,
-        Body: caption,
+        Body: buildCaption(payload),
       };
-
-      // Attach PDF if public URL is available
-      if (pdfUrl) bodyParams['MediaUrl0'] = pdfUrl;
+      if (pdfUrl) params['MediaUrl0'] = pdfUrl;
 
       const res = await fetch(
         `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
@@ -96,72 +94,112 @@ export async function sendWhatsAppReport(
             Authorization:  'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64'),
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: new URLSearchParams(bodyParams).toString(),
+          body: new URLSearchParams(params).toString(),
         }
       );
-
       const data = await res.json();
       if (!res.ok) {
-        console.error('[whatsapp] Twilio error:', data);
-        return { ok: false, error: data.message || 'Twilio send failed' };
+        console.error('[whatsapp] Twilio error:', data.code, data.message);
+        return { ok: false, error: `Twilio: ${data.message}` };
       }
-
-      console.log('[whatsapp] ✅ Sent via Twilio', pdfUrl ? '(with PDF)' : '(text only)', '→', phone);
+      console.log('[whatsapp] ✅ Twilio sent', pdfUrl ? '(PDF+text)' : '(text only)', '→', phone);
       return { ok: true, provider: pdfUrl ? 'twilio-pdf' : 'twilio-text' };
     }
 
-    // ── CallMeBot (text only fallback) ───────────────────────────────────────
+    // ── CallMeBot ────────────────────────────────────────────────────────
     if (cmbKey) {
-      const message = buildCaption(payload);
-      const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(message)}&apikey=${cmbKey}`;
+      const msg = buildCaption(payload);
+      const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(msg)}&apikey=${cmbKey}`;
       const r   = await fetch(url);
       const txt = await r.text();
       if (r.ok && /queued|sent|Message/i.test(txt)) return { ok: true, provider: 'callmebot' };
       return { ok: false, error: txt.slice(0, 120) };
     }
 
-    console.warn('[whatsapp] No provider configured');
     return { ok: false, error: 'no provider configured' };
-
   } catch (e: any) {
     return { ok: false, error: e.message };
   }
 }
 
-// ── Legacy plain text sender (backward compat) ─────────────────────────────
-export async function sendWhatsApp(
-  toRaw: string,
-  message: string
-): Promise<{ ok: boolean; provider?: string; error?: string }> {
-  if (!toRaw) return { ok: false, error: 'no number' };
-  const phone = normalizePhone(toRaw);
+// ── Send welcome message to new user on registration ─────────────────────
+export async function sendWelcomeWhatsApp(
+  phone: string,
+  name: string
+): Promise<void> {
+  const sid   = (process.env.TWILIO_ACCOUNT_SID  || '').trim();
+  const token = (process.env.TWILIO_AUTH_TOKEN    || '').trim();
+  const from  = (process.env.TWILIO_WHATSAPP_FROM || '').trim();
+  if (!sid || !token || !from) return;
 
-  const sid    = (process.env.TWILIO_ACCOUNT_SID   || '').trim();
-  const token  = (process.env.TWILIO_AUTH_TOKEN     || '').trim();
-  const from   = (process.env.TWILIO_WHATSAPP_FROM  || '').trim();
-  const cmbKey = (process.env.CALLMEBOT_APIKEY      || '').trim();
+  const normalized = normalizePhone(phone);
+  if (!normalized) return;
+
+  const message = [
+    `🌾 *Welcome to Cognentrz, ${name}!*`,
+    ``,
+    `You'll receive soil analysis reports here after each scan.`,
+    ``,
+    `_Cognentrz · Soil Intelligence Platform_`,
+  ].join('\n');
 
   try {
-    if (sid && token && from) {
-      const fromAddr = from.startsWith('whatsapp:') ? from : `whatsapp:${from}`;
-      const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+    const fromAddr = from.startsWith('whatsapp:') ? from : `whatsapp:${from}`;
+    await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
+      {
         method: 'POST',
         headers: {
           Authorization:  'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64'),
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({ To: `whatsapp:${phone}`, From: fromAddr, Body: message }).toString(),
-      });
-      const data = await res.json();
-      if (!res.ok) return { ok: false, error: data.message };
+        body: new URLSearchParams({
+          To:   `whatsapp:${normalized}`,
+          From: fromAddr,
+          Body: message,
+        }).toString(),
+      }
+    );
+    console.log('[whatsapp] Welcome sent to', normalized);
+  } catch (e) {
+    console.warn('[whatsapp] Welcome send failed:', e);
+  }
+}
+
+// ── Legacy compat ─────────────────────────────────────────────────────────
+export async function sendWhatsApp(
+  toRaw: string, message: string
+): Promise<{ ok: boolean; provider?: string; error?: string }> {
+  const phone  = normalizePhone(toRaw);
+  const sid    = (process.env.TWILIO_ACCOUNT_SID   || '').trim();
+  const token  = (process.env.TWILIO_AUTH_TOKEN     || '').trim();
+  const from   = (process.env.TWILIO_WHATSAPP_FROM  || '').trim();
+  const cmbKey = (process.env.CALLMEBOT_APIKEY      || '').trim();
+  try {
+    if (sid && token && from) {
+      const res = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization:  'Basic ' + Buffer.from(`${sid}:${token}`).toString('base64'),
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            To: `whatsapp:${phone}`,
+            From: from.startsWith('whatsapp:') ? from : `whatsapp:${from}`,
+            Body: message,
+          }).toString(),
+        }
+      );
+      const d = await res.json();
+      if (!res.ok) return { ok: false, error: d.message };
       return { ok: true, provider: 'twilio' };
     }
     if (cmbKey) {
-      const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(message)}&apikey=${cmbKey}`;
-      const r   = await fetch(url);
-      const txt = await r.text();
-      if (r.ok && /queued|sent|Message/i.test(txt)) return { ok: true, provider: 'callmebot' };
-      return { ok: false, error: txt.slice(0, 120) };
+      const r = await fetch(`https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(message)}&apikey=${cmbKey}`);
+      const t = await r.text();
+      if (r.ok && /queued|sent|Message/i.test(t)) return { ok: true, provider: 'callmebot' };
     }
     return { ok: false, error: 'no provider' };
   } catch (e: any) { return { ok: false, error: e.message }; }
@@ -170,16 +208,12 @@ export async function sendWhatsApp(
 export async function translateText(text: string, target: string): Promise<string> {
   if (!target || target === 'en') return text;
   try {
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${target}&dt=t&q=${encodeURIComponent(text)}`;
-    const r   = await fetch(url);
-    const j   = await r.json();
+    const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${target}&dt=t&q=${encodeURIComponent(text)}`);
+    const j = await r.json();
     return j[0].map((s: any) => s[0]).join('');
   } catch { return text; }
 }
 
 export function buildRichReport(data: any): string {
-  return buildCaption({
-    toPhone: '', farmName: data.farmName, userName: 'Farmer',
-    soilHealthScore: data.soilHealthScore, trend: data.trend, analysisId: '',
-  });
+  return buildCaption({ toPhone: '', farmName: data.farmName, userName: 'Farmer', soilHealthScore: data.soilHealthScore, trend: data.trend, analysisId: '' });
 }
