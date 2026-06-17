@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Cognentrz</string>
+    <string name="title_activity_main">Cognentrz</string>
+    <string name="package_name">com.cognentrz.app</string>
+    <string name="custom_url_scheme">com.cognentrz.app</string>
+</resources>

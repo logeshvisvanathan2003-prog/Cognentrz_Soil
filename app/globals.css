@@ -1,0 +1,557 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-bg-heavy: rgba(255, 255, 255, 0.15);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --accent-green: #8b5cf6;
+  --accent-blue: #38bdf8;
+  --accent-amber: #fbbf24;
+  --accent-red: #f87171;
+  --accent-purple: #a78bfa;
+  --bg-primary: #0a0f0a;
+  --bg-secondary: #0d1a0d;
+  --text-primary: rgba(255, 255, 255, 0.95);
+  --text-secondary: rgba(255, 255, 255, 0.65);
+  --text-tertiary: rgba(255, 255, 255, 0.4);
+
+  /* Foreground RGB triplet - used as rgba(var(--fg-rgb), alpha) throughout the UI.
+     Dark theme: white text/borders on dark glass. */
+  --fg-rgb: 255, 255, 255;
+  color-scheme: dark;
+}
+
+/* ============================================================
+   Light Theme ("Soil Intelligence" light / liquid-glass white)
+   Activated via <html data-theme="light">
+   ============================================================ */
+html[data-theme='light'] {
+  --glass-bg: rgba(20, 30, 24, 0.04);
+  --glass-bg-heavy: rgba(20, 30, 24, 0.07);
+  --glass-border: rgba(20, 30, 24, 0.10);
+  --glass-shadow: 0 8px 32px rgba(60, 80, 60, 0.10);
+  --bg-primary: #f4f7f3;
+  --bg-secondary: #eef3ec;
+  --text-primary: rgba(16, 24, 18, 0.92);
+  --text-secondary: rgba(16, 24, 18, 0.62);
+  --text-tertiary: rgba(16, 24, 18, 0.40);
+
+  /* Foreground RGB triplet for light theme: dark, near-black green-grey text */
+  --fg-rgb: 16, 24, 18;
+  color-scheme: light;
+}
+
+html[data-theme='light'] body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* Soften the ambient gradient orbs for light backgrounds */
+html[data-theme='light'] .bg-orb {
+  opacity: 0.10;
+}
+
+/* Glass surfaces in light mode: frosted white/sage instead of frosted dark */
+html[data-theme='light'] .glass {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(20, 30, 24, 0.08);
+  box-shadow: 0 8px 32px rgba(60, 80, 60, 0.08), inset 0 1px 0 rgba(255,255,255,0.6);
+}
+
+html[data-theme='light'] .glass-heavy {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(20, 30, 24, 0.10);
+  box-shadow: 0 16px 64px rgba(60,80,60,0.10), inset 0 1px 0 rgba(255,255,255,0.7);
+}
+
+html[data-theme='light'] .glass-card:hover {
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 12px 48px rgba(60,80,60,0.12), inset 0 1px 0 rgba(255,255,255,0.7);
+}
+
+html[data-theme='light'] .glass-btn:hover {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+html[data-theme='light'] input,
+html[data-theme='light'] select,
+html[data-theme='light'] textarea {
+  background: rgba(20, 30, 24, 0.04) !important;
+  border: 1px solid rgba(20, 30, 24, 0.12) !important;
+  color: rgba(16, 24, 18, 0.92) !important;
+}
+
+html[data-theme='light'] input:focus,
+html[data-theme='light'] select:focus,
+html[data-theme='light'] textarea:focus {
+  background: rgba(20, 30, 24, 0.06) !important;
+}
+
+html[data-theme='light'] input::placeholder,
+html[data-theme='light'] textarea::placeholder {
+  color: rgba(16, 24, 18, 0.35) !important;
+}
+
+html[data-theme='light'] select option {
+  background: #ffffff;
+  color: #101812;
+}
+
+html[data-theme='light'] ::-webkit-scrollbar-track {
+  background: rgba(20,30,24,0.04);
+}
+
+html[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: rgba(20,30,24,0.15);
+}
+
+html[data-theme='light'] .leaflet-container {
+  background: #e8efe5 !important;
+}
+
+html[data-theme='light'] .leaflet-control-zoom {
+  border: 1px solid rgba(20,30,24,0.15) !important;
+  background: rgba(255,255,255,0.85) !important;
+}
+
+html[data-theme='light'] .leaflet-control-zoom a {
+  background: transparent !important;
+  color: #101812 !important;
+  border-bottom: 1px solid rgba(20,30,24,0.08) !important;
+}
+
+html[data-theme='light'] .leaflet-popup-content-wrapper,
+html[data-theme='light'] .leaflet-popup-tip {
+  background: rgba(255,255,255,0.95) !important;
+  border: 1px solid rgba(20,30,24,0.10) !important;
+  color: #101812 !important;
+}
+
+html[data-theme='light'] .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: rgba(255,255,255,0.97) !important;
+  border: 1px solid rgba(20,30,24,0.10) !important;
+  color: #101812 !important;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+/* Liquid Glass Components */
+@layer components {
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(1.8);
+    -webkit-backdrop-filter: blur(20px) saturate(1.8);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+
+  .glass-heavy {
+    background: var(--glass-bg-heavy);
+    backdrop-filter: blur(40px) saturate(2);
+    -webkit-backdrop-filter: blur(40px) saturate(2);
+    border: 1px solid rgba(255,255,255,0.25);
+    box-shadow: 0 16px 64px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+
+  .glass-card {
+    @apply glass rounded-2xl p-5 transition-all duration-300;
+  }
+
+  .glass-card:hover {
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 48px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+    transform: translateY(-2px);
+  }
+
+  .glass-btn {
+    @apply glass rounded-xl px-5 py-2.5 font-medium text-sm transition-all duration-200 cursor-pointer select-none;
+  }
+
+  .glass-btn:hover {
+    background: var(--glass-bg-heavy);
+    transform: scale(1.02);
+  }
+
+  .glass-btn:active {
+    transform: scale(0.98);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    box-shadow: 0 4px 20px rgba(124,58,237,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+    @apply text-white font-semibold rounded-xl px-6 py-3 transition-all duration-200 cursor-pointer;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 30px rgba(124,58,237,0.5);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
+  .score-ring {
+    @apply relative flex items-center justify-center;
+  }
+
+  .shimmer-bg {
+    background: linear-gradient(
+      90deg,
+      rgba(255,255,255,0.03) 0%,
+      rgba(255,255,255,0.08) 50%,
+      rgba(255,255,255,0.03) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  .gradient-text-purple {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-text-blue {
+    background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-text-gold {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .neon-glow-green {
+    box-shadow: 0 0 20px rgba(124,58,237,0.5), 0 0 60px rgba(124,58,237,0.2);
+  }
+
+  .neon-glow-blue {
+    box-shadow: 0 0 20px rgba(56,189,248,0.5), 0 0 60px rgba(56,189,248,0.2);
+  }
+
+  .leaf-pattern {
+    background-image: 
+      radial-gradient(ellipse at 20% 50%, rgba(124,58,237,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(56,189,248,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 80%, rgba(167,139,250,0.04) 0%, transparent 50%);
+  }
+
+  .scroll-hide::-webkit-scrollbar { display: none; }
+  .scroll-hide { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+/* Animated background orbs */
+.bg-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+  animation: float 8s ease-in-out infinite;
+}
+
+.bg-orb-1 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, #7c3aed, transparent);
+  top: -150px;
+  left: -150px;
+  animation-delay: 0s;
+}
+
+.bg-orb-2 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, #0ea5e9, transparent);
+  top: 40%;
+  right: -100px;
+  animation-delay: -3s;
+}
+
+.bg-orb-3 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, #a78bfa, transparent);
+  bottom: -100px;
+  left: 30%;
+  animation-delay: -6s;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.03);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+}
+
+/* Leaflet map overrides */
+.leaflet-container {
+  background: #0d1a0d !important;
+  border-radius: 16px;
+}
+
+.leaflet-control-zoom {
+  border: 1px solid rgba(255,255,255,0.2) !important;
+  background: rgba(10,15,10,0.8) !important;
+  backdrop-filter: blur(20px) !important;
+}
+
+.leaflet-control-zoom a {
+  background: transparent !important;
+  color: white !important;
+  border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: rgba(10,20,10,0.9) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255,255,255,0.15) !important;
+  color: white !important;
+  border-radius: 12px !important;
+}
+
+.leaflet-popup-tip {
+  background: rgba(10,20,10,0.9) !important;
+}
+
+/* Progress bar animations */
+@keyframes progressFill {
+  from { width: 0%; }
+  to { width: var(--target-width); }
+}
+
+.progress-animate {
+  animation: progressFill 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Input styles */
+input, select, textarea {
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  color: white !important;
+  outline: none;
+  transition: all 0.2s;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: rgba(124,58,237,0.5) !important;
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.1) !important;
+  background: rgba(255,255,255,0.08) !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: rgba(255,255,255,0.3) !important;
+}
+
+select option {
+  background: #0d1a0d;
+  color: white;
+}
+
+/* Notification badge */
+.badge {
+  @apply absolute -top-1 -right-1 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 2px 8px rgba(239,68,68,0.5);
+}
+
+/* Tab styles */
+.tab-active {
+  background: rgba(124,58,237,0.15);
+  border-color: rgba(124,58,237,0.4);
+  color: #8b5cf6;
+}
+
+/* Chart tooltip */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: rgba(10,20,10,0.95) !important;
+  border: 1px solid rgba(255,255,255,0.15) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(20px);
+}
+
+/* ============================================================
+   FIELDSCAPE THEME — premium agritech (matches reference design)
+   Forest/olive greens, full-bleed aerial photography, frosted
+   dark-green glass cards, warm off-white canvas.
+   ============================================================ */
+:root {
+  /* ===== promptOS purple theme ===== */
+  --fs-canvas: #f4f3f8;          /* very light grey-lilac app background */
+  --fs-forest: #6d28d9;          /* primary purple (was forest/header) */
+  --fs-forest-2: #5b21b6;        /* deeper purple */
+  --fs-leaf: #7c3aed;            /* accent purple (was leaf) */
+  --fs-leaf-2: #8b5cf6;
+  --fs-leaf-dark: #6d28d9;
+  --fs-card: #ffffff;            /* white cards */
+  --fs-text: #0f0f17;            /* near-black bold text */
+  --fs-text-soft: #6b7280;
+  --fs-on-forest: rgba(255,255,255,0.95);
+  --fs-on-forest-soft: rgba(255,255,255,0.7);
+}
+
+/* Dark mode promptOS palette */
+html[data-theme='dark'] {
+  --fs-canvas: #0f0a1e;          /* deep purple-black canvas */
+  --fs-forest: #6d28d9;
+  --fs-forest-2: #4c1d95;
+  --fs-leaf: #8b5cf6;
+  --fs-leaf-2: #a78bfa;
+  --fs-leaf-dark: #a78bfa;
+  --fs-card: #1a132e80;          /* translucent dark purple card */
+  --fs-text: rgba(255,255,255,0.94);
+  --fs-text-soft: rgba(255,255,255,0.55);
+  --fs-on-forest: rgba(255,255,255,0.95);
+  --fs-on-forest-soft: rgba(255,255,255,0.7);
+}
+
+.fs-app {
+  background: var(--fs-canvas);
+  min-height: 100dvh;
+  color: var(--fs-text);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Dark-green frosted glass panel (over photos or solid) */
+.fs-forest-card {
+  background: linear-gradient(155deg, rgba(109,40,217,0.96), rgba(76,29,149,0.98));
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 20px 50px rgba(28,36,23,0.28);
+  color: var(--fs-on-forest);
+}
+
+/* Translucent forest glass that lets photo show through */
+.fs-glass-forest {
+  background: rgba(76,29,149,0.45);
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  border: 1px solid rgba(255,255,255,0.16);
+  color: var(--fs-on-forest);
+}
+
+/* Light card (field tiles, lists) */
+.fs-light-card {
+  background: var(--fs-card);
+  border: 1px solid rgba(28,36,23,0.06);
+  box-shadow: 0 10px 30px rgba(28,36,23,0.06);
+  color: var(--fs-text);
+}
+html[data-theme='dark'] .fs-light-card {
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Leaf-green pill button */
+.fs-pill {
+  background: linear-gradient(135deg, var(--fs-leaf), var(--fs-leaf-dark));
+  color: #fff;
+  border-radius: 999px;
+  font-weight: 600;
+  box-shadow: 0 10px 24px rgba(124,58,237,0.4);
+}
+
+.fs-filter-pill {
+  border-radius: 999px;
+  background: rgba(28,36,23,0.05);
+  color: var(--fs-text-soft);
+  font-weight: 500;
+}
+.fs-filter-pill.active {
+  background: linear-gradient(135deg, var(--fs-leaf), var(--fs-leaf-dark));
+  color: #fff;
+}
+
+/* Floating bottom nav pill */
+.fs-nav {
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(28,36,23,0.06);
+  box-shadow: 0 12px 40px rgba(28,36,23,0.14);
+}
+html[data-theme='dark'] .fs-nav {
+  background: rgba(24,33,19,0.85);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+html[data-theme='dark'] .fs-filter-pill {
+  background: rgba(255,255,255,0.07);
+  color: var(--fs-text-soft);
+}
+
+.scroll-hide::-webkit-scrollbar { display: none; }
+.scroll-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Live user-location pulsing marker on the map */
+.user-loc-dot {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #7c3aed; border: 3px solid #fff;
+  box-shadow: 0 0 0 2px rgba(124,58,237,0.6);
+  position: relative;
+}
+.user-loc-pulse {
+  position: absolute; inset: -6px; border-radius: 50%;
+  background: rgba(124,58,237,0.45);
+  animation: locPulse 2s ease-out infinite;
+}
+@keyframes locPulse {
+  0%   { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* Login glass inputs — ensure placeholder + typed text are visible */
+.login-glass-input::placeholder { color: rgba(255,255,255,0.6); }
+.login-glass-input { color: #fff !important; -webkit-text-fill-color: #fff; }
+
+/* ============================================================
+   RESPONSIVE SIZING — cap app width on phones, scale type down
+   ============================================================ */
+.fs-app, main {
+  font-size: 15px;
+}
+@media (max-width: 420px) {
+  .fs-app { font-size: 14px; }
+}
+/* keep the whole app phone-width and centered on large screens */
+main.flex-1 { max-width: 440px; }
